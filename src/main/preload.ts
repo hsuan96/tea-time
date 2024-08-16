@@ -1,8 +1,16 @@
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import {
+  CreateStoreReq,
+  UpdateStoreReq,
+  CreateDrinkReq,
+  UpdateDrinkReq,
+} from '../types';
 
 export type Channels = 'ipc-example';
+export type ElectronHandler = typeof electronHandler;
+export type DbHandler = typeof dbIpcRenderHandlers;
 
 const electronHandler = {
   ipcRenderer: {
@@ -24,6 +32,21 @@ const electronHandler = {
   },
 };
 
-contextBridge.exposeInMainWorld('electron', electronHandler);
+export const dbIpcRenderHandlers = {
+  fetch: (payload?: string) => ipcRenderer.invoke('db:fetch', payload),
+  storeCreate: (payload: CreateStoreReq) =>
+    ipcRenderer.invoke('db:storeCreate', payload),
+  storeUpdate: (payload: UpdateStoreReq) =>
+    ipcRenderer.invoke('db:storeUpdate', payload),
+  storeDelete: (payload: number) =>
+    ipcRenderer.invoke('db:storeDelete', payload),
+  drinkCreate: (payload: CreateDrinkReq) =>
+    ipcRenderer.invoke('db:drinkCreate', payload),
+  drinkUpdate: (payload: UpdateDrinkReq) =>
+    ipcRenderer.invoke('db:drinkUpdate', payload),
+  drinkDelete: (payload: number) =>
+    ipcRenderer.invoke('db:drinkDelete', payload),
+};
 
-export type ElectronHandler = typeof electronHandler;
+contextBridge.exposeInMainWorld('electron', electronHandler);
+contextBridge.exposeInMainWorld('db', dbIpcRenderHandlers);

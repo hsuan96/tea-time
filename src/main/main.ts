@@ -12,8 +12,16 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import process from 'node:process';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import { connect, close, sequelize } from './sql';
+import { dbIpcMainHandlers } from './handlers/db';
+import Config from '../config';
+
+if (Config.isDebug) {
+  require('electron-debug')();
+}
 
 class AppUpdater {
   constructor() {
@@ -24,6 +32,7 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let isQuitting = false;
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -31,16 +40,14 @@ ipcMain.on('ipc-example', async (event, arg) => {
   event.reply('ipc-example', msgTemplate('pong'));
 });
 
+// Dynamically register IPC handlers
+for (const [key, handler] of Object.entries(dbIpcMainHandlers)) {
+  ipcMain.handle(key, async (event, ...args) => handler(...args));
+}
+
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
-}
-
-const isDebug =
-  process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
-
-if (isDebug) {
-  require('electron-debug')();
 }
 
 const installExtensions = async () => {
@@ -57,7 +64,7 @@ const installExtensions = async () => {
 };
 
 const createWindow = async () => {
-  if (isDebug) {
+  if (Config.isDebug) {
     await installExtensions();
   }
 
@@ -69,12 +76,18 @@ const createWindow = async () => {
     return path.join(RESOURCES_PATH, ...paths);
   };
 
+  await sequelize.sync();
+
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1024,
-    height: 728,
+    width: 835,
+    height: 700,
+    minWidth: 565,
+    maxWidth: 1380,
     icon: getAssetPath('icon.png'),
     webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
@@ -83,7 +96,7 @@ const createWindow = async () => {
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.on('ready-to-show', async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
@@ -96,6 +109,14 @@ const createWindow = async () => {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Hide the window instead of closing it
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow!.hide();
+    }
   });
 
   const menuBuilder = new MenuBuilder(mainWindow);
@@ -124,14 +145,24 @@ app.on('window-all-closed', () => {
   }
 });
 
+app.on('before-quit', () => {
+  close();
+  isQuitting = true;
+});
+
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     createWindow();
+    await connect();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
+      if (mainWindow === null) {
+        createWindow();
+      } else {
+        mainWindow.show();
+      }
     });
   })
   .catch(console.log);
