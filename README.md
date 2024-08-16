@@ -8,7 +8,7 @@ This is a personal beverage review desktop application that allows users to reco
 </p>
 <br>
 
-<img src=".erb/img/demo" />
+<img src=".erb/img/demo.png" />
 
 ## Install
 
