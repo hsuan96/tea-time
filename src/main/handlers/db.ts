@@ -50,7 +50,6 @@ class DbService {
       });
       return store.toJSON();
     } catch (err) {
-      console.error(err);
       return null;
     }
   }
@@ -63,7 +62,6 @@ class DbService {
       );
       return count > 0;
     } catch (err) {
-      console.error(err);
       return false;
     }
   }
@@ -73,7 +71,6 @@ class DbService {
       const count = await StoreModel.destroy({ where: { id } });
       return count > 0;
     } catch (err) {
-      console.error(err);
       return null;
     }
   }
@@ -83,7 +80,6 @@ class DbService {
       const drinks = await DrinkModel.create(data);
       return drinks.toJSON();
     } catch (err) {
-      console.error(err);
       return null;
     }
   }
@@ -102,7 +98,6 @@ class DbService {
       );
       return count > 0;
     } catch (err) {
-      console.error(err);
       return null;
     }
   }
@@ -112,7 +107,6 @@ class DbService {
       const count = await DrinkModel.destroy({ where: { id } });
       return count > 0;
     } catch (err) {
-      console.error(err);
       return null;
     }
   }

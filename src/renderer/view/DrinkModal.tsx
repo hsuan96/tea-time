@@ -12,7 +12,7 @@ import Rating from '@mui/material/Rating';
 import { SugarType, sugarNumber, sugarText, iceText } from '../../constants';
 import useStore from '../store';
 
-import styles from './styles.module.css'
+import styles from './styles.module.css';
 
 export default function DrinkModal() {
   const drinkModalVisible = useStore((state) => state.drinkModalVisible);
